@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#0A0D12">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-330 -330 660 660' width='660' height='660'><path fill='%23FF2E63' d='M-269,-186 L-60,-186 L-60,-114 L-234,-114 L-234,114 L-119,114 L-187,186 L-269,186 L-317,138 L-317,-138 Z M269,186 L60,186 L60,114 L234,114 L234,-114 L119,-114 L187,-186 L269,-186 L317,-138 L317,138 Z'/><path fill='%23EDF0F4' d='M-97.0,-59.9 Q-97,-95 -65.4,-79.8 L67.0,-15.8 Q108,4 67.0,23.8 L-65.4,87.8 Q-97,103 -97.0,67.9 Z'/></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ViralForge</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="O ViralForge assiste lives do mundo inteiro, acha os momentos que viralizam, corta, edita, traduz, dubla em português e entrega no seu Telegram.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,600;1,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: uma "ilha de edição" — linha do tempo da live no topo do hero vira cortes verticais; o resto da página segue o fluxo link → corte → Telegram → renda. */
+:root {
+  /* identidade oficial ViralForge: fundo noite, vermelho forja, destaque amarelo, gelo */
+  --paper: #0A0D12;
+  --surface: #12161D;
+  --sunk: #1C222C;
+  --ink: #EDF0F4;
+  --muted: #9BA5B3;
+  --line: #2A323E;
+  --live: #FF2E63;
+  --live-soft: #3A1420;
+  --burn: #FFD43B;
+  --on-live: #0A0D12;
+  --good: #33D17A;
+  --display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radius: 6px;
+  --cut: 12px;
+  --max: 1160px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { background: var(--paper); color: var(--ink); font: 400 17px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--paper); }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--live); outline-offset: 3px; border-radius: 6px; }
+
+.wrap { max-width: var(--max); margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+section { padding-block: clamp(64px, 9vw, 120px); }
+h1, h2, h3 { font-family: var(--display); line-height: 1.02; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font-size: clamp(32px, 4.4vw, 52px); font-weight: 850; font-stretch: 78%; max-width: 18ch; }
+h3 { font-size: 22px; font-weight: 750; font-stretch: 92%; line-height: 1.15; }
+p { margin: 0; }
+.lead { font-size: clamp(18px, 2vw, 21px); color: var(--muted); max-width: 58ch; }
+.kicker { font: 600 14px/1 var(--body); color: var(--live); display: inline-flex; gap: 8px; align-items: center; margin-bottom: 18px; }
+.kicker::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--live); }
+.tc { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* botões */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 26px; border-radius: 999px; border: 0; font: 650 17px/1 var(--body); text-decoration: none; cursor: pointer; transition: transform .15s ease, background .15s ease; }
+.btn-live { background: var(--live); color: var(--on-live); box-shadow: 0 10px 30px -12px var(--live); }
+.btn-live:hover { transform: translateY(-2px); }
+.btn-ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.btn-ghost:hover { border-color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn-live:hover { transform: none; } }
+
+/* topo */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; }
+.logo { display: inline-flex; align-items: center; gap: 10px; font: 900 21px/1 var(--display); font-stretch: 85%; text-decoration: none; }
+.nav { display: flex; gap: 26px; font-size: 15px; color: var(--muted); }
+.nav a { text-decoration: none; }
+.nav a:hover { color: var(--ink); }
+.top .btn { min-height: 42px; padding: 0 18px; font-size: 15px; }
+@media (max-width: 860px) { .nav { display: none; } }
+
+/* hero */
+.hero { padding-block: clamp(40px, 6vw, 80px) clamp(56px, 7vw, 96px); }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(32px, 5vw, 64px); align-items: center; }
+.hero h1 { font-size: clamp(40px, 6.2vw, 80px); font-weight: 700; text-transform: uppercase; font-stretch: 70%; line-height: .94; letter-spacing: -0.015em; }
+.hero .lead { margin-top: 24px; }
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.hero-note { margin-top: 18px; font-size: 14px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.hero-note span::before { content: "✓ "; color: var(--good); font-weight: 700; }
+@media (max-width: 940px) { .hero-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ilha de edição */
+.studio { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 18px; box-shadow: 0 30px 80px -40px rgba(16, 20, 26, .45); min-width: 0; }
+.studio-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.onair { display: inline-flex; align-items: center; gap: 6px; background: var(--live); color: var(--on-live); font: 700 11px/1 var(--mono); padding: 5px 8px; border-radius: 5px; letter-spacing: .06em; }
+.onair i { width: 7px; height: 7px; border-radius: 50%; background: var(--on-live); animation: blink 1.2s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+.timeline { position: relative; background: var(--sunk); border-radius: 12px; padding: 10px 10px 6px; overflow: hidden; }
+.timeline svg { display: block; width: 100%; height: auto; }
+.tl-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.tl-legend b { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.clips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.phone { position: relative; aspect-ratio: 9 / 16; max-width: 100%; border-radius: 16px; overflow: hidden; background: #0B0E13; border: 3px solid #0B0E13; box-shadow: 0 14px 30px -18px rgba(0,0,0,.6); }
+.phone .cam { position: absolute; inset: 0 0 auto; height: 36%; background: radial-gradient(circle at 50% 120%, #3b4659 0 30%, #232a36 31%); }
+.phone .cam::before { content: ""; position: absolute; left: 50%; top: 22%; width: 34%; aspect-ratio: 1; border-radius: 50%; transform: translateX(-50%); background: #c99a7b; box-shadow: 0 0 0 4px #2b2f38 inset; }
+.phone .cam::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 62%; height: 32%; border-radius: 50% 50% 0 0; transform: translateX(-50%); background: #1d2430; }
+.phone .game { position: absolute; inset: 36% 0 0; }
+.g1 { background: linear-gradient(#ff8a3d, #c2185b 45%, #2a1b3d 46%), #2a1b3d; }
+.g2 { background: linear-gradient(#57c7ff, #2b6cb0 50%, #1f2a37 51%); }
+.g3 { background: linear-gradient(#9be15d, #00a676 48%, #2d2a24 49%); }
+.phone .game::before { content: ""; position: absolute; inset: 30% 0 0; background: repeating-linear-gradient(90deg, rgba(0,0,0,.55) 0 9%, rgba(0,0,0,.35) 9% 14%, transparent 14% 17%, rgba(0,0,0,.6) 17% 26%, transparent 26% 30%); clip-path: polygon(0 40%, 8% 40%, 8% 10%, 16% 10%, 16% 30%, 26% 30%, 26% 0, 34% 0, 34% 35%, 45% 35%, 45% 15%, 55% 15%, 55% 45%, 66% 45%, 66% 5%, 76% 5%, 76% 28%, 88% 28%, 88% 18%, 100% 18%, 100% 100%, 0 100%); }
+.phone .seam { position: absolute; top: 36%; left: 0; right: 0; transform: translateY(-50%); text-align: center; font: 900 clamp(9px, 1.15vw, 13px)/1.05 var(--display); font-stretch: 75%; color: #fff; text-transform: uppercase; padding: 5px 6px; background: #000; z-index: 2; }
+.phone .burn { position: absolute; left: 6%; right: 6%; bottom: 14%; text-align: center; font: 900 clamp(10px, 1.35vw, 15px)/1.1 var(--display); font-stretch: 80%; color: #fff; text-transform: uppercase; text-shadow: 0 2px 0 #000, 0 0 6px #000; z-index: 2; }
+.phone .burn em { font-style: normal; color: var(--burn); }
+.phone .dub { position: absolute; top: 6px; right: 6px; font: 700 9px/1 var(--mono); background: rgba(0,0,0,.65); color: #fff; padding: 4px 5px; border-radius: 4px; z-index: 2; }
+.clip-meta { margin-top: 6px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+.clip-meta .tc { color: var(--ink); }
+@media (max-width: 420px) { .clips { gap: 8px; } .clip-meta { flex-direction: column; gap: 0; } }
+
+/* faixa de prova */
+.proof { border-block: 1px solid var(--line); background: var(--surface); padding-block: 28px; }
+.proof .wrap { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.proof strong { display: block; font: 850 clamp(28px, 3.4vw, 40px)/1 var(--display); font-stretch: 75%; }
+.proof span { display: block; margin-top: 6px; font-size: 14px; color: var(--muted); }
+.proof-note { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+@media (max-width: 760px) { .proof .wrap { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* dor */
+.pain-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; margin-top: 44px; }
+.pain-col { border-radius: var(--radius); padding: 28px; }
+.pain-col.old { background: var(--sunk); }
+.pain-col.new { background: var(--ink); color: var(--paper); }
+.pain-col h3 { margin-bottom: 18px; }
+.pain-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.pain-col li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; }
+.pain-col.old li::before { content: "✕"; color: var(--muted); font-weight: 700; }
+.pain-col.new li::before { content: "✓"; color: var(--burn); font-weight: 700; }
+.pain-col .tc { font-size: 14px; opacity: .8; }
+@media (max-width: 760px) { .pain-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* como funciona */
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-top: 48px; counter-reset: s; }
+.step { padding: 24px 24px 0 0; border-top: 2px solid var(--line); position: relative; }
+.step::before { counter-increment: s; content: counter(s); position: absolute; top: -15px; left: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--live); color: var(--on-live); font: 700 14px/28px var(--mono); text-align: center; }
+.step h3 { margin: 10px 0 10px; }
+.step p { color: var(--muted); font-size: 16px; }
+@media (max-width: 900px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 36px; } }
+@media (max-width: 520px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+
+/* exclusivos */
+.only { background: var(--ink); color: var(--paper); }
+.only .lead { color: color-mix(in srgb, var(--paper) 70%, var(--ink)); }
+.only .kicker { color: var(--burn); }
+.only .kicker::before { background: var(--burn); }
+.only-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; margin-top: 48px; }
+.feat { grid-column: span 2; border: 1px solid color-mix(in srgb, var(--paper) 16%, var(--ink)); border-radius: var(--radius); padding: 26px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.feat.big { grid-column: span 3; background: color-mix(in srgb, var(--paper) 6%, var(--ink)); }
+.feat .tag { align-self: flex-start; font: 700 12px/1 var(--mono); padding: 6px 8px; border-radius: 5px; background: var(--live); color: var(--on-live); }
+.feat p { color: color-mix(in srgb, var(--paper) 72%, var(--ink)); font-size: 16px; }
+.feat .mini { margin-top: auto; font: 500 13px/1.5 var(--mono); color: var(--burn); }
+@media (max-width: 900px) { .only-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .feat, .feat.big { grid-column: span 1; } }
+@media (max-width: 600px) { .only-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* mundo */
+.world-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 64px); align-items: center; }
+.dubcard { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 22px; display: grid; gap: 14px; min-width: 0; }
+.lang-row { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 14px; align-items: start; }
+.lang { font: 700 13px/1 var(--mono); padding: 7px 0; border-radius: 6px; text-align: center; background: var(--sunk); }
+.lang.pt { background: var(--live); color: var(--on-live); }
+.lang-row p { font-size: 16px; }
+.lang-row .orig { color: var(--muted); font-style: italic; }
+.wave { height: 34px; display: flex; align-items: center; gap: 3px; }
+.wave i { flex: 1; background: var(--live); border-radius: 2px; opacity: .85; }
+.dub-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 13px; padding: 5px 10px; border-radius: 999px; background: var(--sunk); color: var(--ink); }
+.checks { list-style: none; padding: 0; margin: 26px 0 0; display: grid; gap: 12px; }
+.checks li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; }
+.checks li::before { content: "✓"; color: var(--good); font-weight: 800; }
+@media (max-width: 900px) { .world-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* telegram */
+.tg-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 64px); align-items: center; }
+.tg { background: #6E8BA3; background: linear-gradient(160deg, #8FA9BC, #5E7C95); border-radius: 26px; padding: 18px; max-width: 420px; justify-self: center; width: 100%; }
+.tg-bar { color: #fff; font: 600 15px/1.2 var(--body); display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.tg-bar .av { width: 34px; height: 34px; border-radius: 50%; background: var(--live); display: grid; place-items: center; font: 900 15px/1 var(--display); }
+.tg-bar small { display: block; font-weight: 400; opacity: .8; font-size: 12px; }
+.bubble { background: #fff; color: #111; border-radius: 14px 14px 14px 4px; padding: 12px 14px; font-size: 14px; line-height: 1.45; }
+.bubble b { font-weight: 600; }
+.ikb { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 5px; }
+.ikb span { background: rgba(255,255,255,.28); color: #fff; text-align: center; font-size: 13px; font-weight: 500; padding: 9px 4px; border-radius: 8px; }
+.ikb .full { grid-column: 1 / -1; }
+.tg-list { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 18px; }
+.tg-list li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; }
+.tg-list .ic { width: 40px; height: 40px; border-radius: 10px; background: var(--live-soft); display: grid; place-items: center; font-size: 19px; }
+.tg-list strong { display: block; }
+.tg-list p { color: var(--muted); font-size: 16px; }
+@media (max-width: 900px) { .tg-grid { grid-template-columns: minmax(0, 1fr); } .tg { order: 2; } }
+
+/* tudo incluso */
+.all-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: 44px; border-top: 1px solid var(--line); }
+.all-item { padding: 22px 22px 22px 0; border-bottom: 1px solid var(--line); }
+.all-item strong { display: block; font-size: 17px; }
+.all-item span { color: var(--muted); font-size: 15px; }
+@media (max-width: 860px) { .all-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .all-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* renda */
+.money { background: var(--surface); border-block: 1px solid var(--line); }
+.money-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 44px; }
+.way { border-radius: var(--radius); background: var(--paper); padding: 26px; display: flex; flex-direction: column; gap: 10px; }
+.way .tc { font-size: 13px; color: var(--live); font-weight: 700; }
+.way p { color: var(--muted); font-size: 16px; }
+.disclaimer { margin-top: 26px; font-size: 14px; color: var(--muted); max-width: 70ch; }
+@media (max-width: 860px) { .money-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* comparação */
+.table-box { overflow-x: auto; margin-top: 40px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 15px; }
+th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th { font: 700 14px/1.3 var(--body); color: var(--muted); }
+thead th.us { color: var(--live); }
+td.us { background: var(--live-soft); font-weight: 600; }
+tbody tr:last-child td { border-bottom: 0; }
+.no { color: var(--muted); }
+
+/* ética */
+.ethic { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(32px, 5vw, 64px); align-items: start; }
+.permit { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px; font-size: 15px; display: grid; gap: 12px; }
+.permit .who { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-weight: 600; }
+.permit .who span { font-weight: 400; color: var(--muted); }
+.permit .verdict { background: var(--sunk); border-radius: 10px; padding: 10px 12px; color: var(--muted); }
+.permit .row { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { font-size: 13px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); }
+.pill.ok { background: var(--good); color: #fff; border-color: transparent; }
+@media (max-width: 860px) { .ethic { grid-template-columns: minmax(0, 1fr); } }
+
+/* preços */
+.plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 44px; max-width: 900px; }
+.plan { border-radius: 20px; padding: 30px; background: var(--surface); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 16px; }
+.plan.hot { border: 2px solid var(--live); position: relative; }
+.plan .badge { position: absolute; top: -13px; left: 28px; background: var(--live); color: var(--on-live); font: 700 12px/1 var(--mono); padding: 7px 10px; border-radius: 6px; }
+.plan .name { font: 750 22px/1.1 var(--display); font-stretch: 90%; }
+.price { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.price strong { font: 900 54px/1 var(--display); font-stretch: 72%; }
+.price span { color: var(--muted); }
+.plan .sub { color: var(--muted); font-size: 15px; }
+.plan ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; font-size: 15px; }
+.plan li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; }
+.plan li::before { content: "✓"; color: var(--good); font-weight: 800; }
+.plan .btn { margin-top: auto; width: 100%; }
+.buy-msg { font-size: 14px; color: var(--muted); min-height: 1.4em; }
+.guarantee { margin-top: 28px; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 18px; align-items: center; max-width: 900px; }
+.seal { width: 64px; height: 64px; border-radius: 50%; border: 2px dashed var(--good); display: grid; place-items: center; font: 900 22px/1 var(--display); color: var(--good); }
+@media (max-width: 760px) { .plans { grid-template-columns: minmax(0, 1fr); } }
+
+.req { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* faq */
+.faq { max-width: 820px; margin-top: 36px; }
+details { border-bottom: 1px solid var(--line); }
+summary { cursor: pointer; list-style: none; padding: 20px 40px 20px 0; position: relative; font: 650 18px/1.35 var(--body); }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; position: absolute; right: 4px; top: 16px; font: 400 26px/1 var(--body); color: var(--live); }
+details[open] summary::after { content: "–"; }
+details p { padding: 0 0 22px; color: var(--muted); max-width: 68ch; }
+
+/* final */
+.final { background: var(--live); color: var(--on-live); text-align: left; }
+.final h2 { max-width: 16ch; font-size: clamp(38px, 6vw, 72px); }
+.final p { margin-top: 18px; font-size: 19px; max-width: 52ch; opacity: .92; }
+.final .btn { background: var(--on-live); color: #10141A; margin-top: 30px; }
+footer { padding-block: 32px; font-size: 14px; color: var(--muted); }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+
+/* barra fixa no celular */
+.mobile-cta { display: none; }
+@media (max-width: 640px) {
+  .mobile-cta { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(10px); border-top: 1px solid var(--line); }
+  .mobile-cta .btn { width: 100%; }
+  footer { padding-bottom: 96px; }
+  .top .btn { display: none; }
+}
+
+/* ---- identidade oficial: chanfro e corte diagonal */
+.logo svg.lockup { height: 34px; width: auto; display: block; }
+.btn { border-radius: 0; font-family: var(--display); font-weight: 700; font-style: italic; letter-spacing: .02em;
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+.btn-live { box-shadow: none; }
+.btn-ghost { box-shadow: inset 0 0 0 1.5px var(--line); border: 0; }
+.btn-ghost:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
+h1, h2, h3 { font-style: italic; font-weight: 700; letter-spacing: 0; }
+.hero { position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; width: 10px; height: 160%; top: -30%; right: 46%; background: var(--live);
+  transform: rotate(38deg); opacity: .14; pointer-events: none; }
+.hero::after { content: ""; position: absolute; width: 3px; height: 160%; top: -30%; right: calc(46% - 34px); background: var(--live);
+  transform: rotate(38deg); opacity: .22; pointer-events: none; }
+.hero .wrap { position: relative; z-index: 1; }
+.tg-bar .av { background: #0A0D12; box-shadow: inset 0 0 0 2px var(--live); }
+.tg-bar .av svg { width: 24px; height: auto; display: block; }
+.foot-logo { height: 44px; width: auto; display: block; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#inicio" aria-label="ViralForge, início"><svg class="lockup" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 -130 1362.85 260"><g transform="translate(170.0,0) scale(0.5)"><path fill="#FF2E63" d="M-269,-186 L-60,-186 L-60,-114 L-234,-114 L-234,114 L-119,114 L-187,186 L-269,186 L-317,138 L-317,-138 Z M269,186 L60,186 L60,114 L234,114 L234,-114 L119,-114 L187,-186 L269,-186 L317,-138 L317,138 Z M192,-213 L52,-64 L20,-81 Z M-192,213 L-52,64 L-20,81 Z"/><path fill="#EDF0F4" d="M-97.0,-72.7 Q-97,-95 -76.9,-85.3 L81.9,-8.6 Q108,4 81.9,16.6 L-76.9,93.3 Q-97,103 -97.0,80.7 Z"/></g><rect x="361.5" y="-70" width="3" height="140" fill="#EDF0F4" opacity=".25"/><g transform="translate(386.0,66.5)"><path fill="#EDF0F4" stroke="#EDF0F4" stroke-width="5.7" stroke-linejoin="miter" d="M17.1 -133.0H42.56L57.57 -30.78H57.95L109.06 -133.0H136.8L66.12 0.0H41.04ZM144.97 -109.06H166.15879999999999L146.8396 0.0H125.65079999999999ZM261.6642 -57.9576 249.8234 -47.8306 258.3924 -36.1456 252.00459999999998 0.0H230.8158L236.4246 -32.2506L229.5694 -41.7544H194.9818L187.6592 0.0H166.4704L185.6338 -109.06H252.62779999999998L267.4288 -90.9872ZM198.0978 -59.204H235.4898L241.8776 -64.657L245.6168 -85.8458L241.09859999999998 -91.2988H203.7066ZM319.6218 -109.06H338.94100000000003L359.66240000000005 0.0H338.16200000000003L333.79960000000005 -24.148999999999997H295.4728L282.074 0.0H260.57360000000006ZM331.7742 -41.5986 324.76320000000004 -83.0414H324.45160000000004L302.95120000000003 -41.5986ZM388.3296 -109.06H409.51840000000004L393.471 -17.916999999999998H447.84520000000003L444.7292 0.0H369.1662Z"/><path fill="#FF2E63" stroke="#FF2E63" stroke-width="5.7" stroke-linejoin="miter" d="M479.1344 -133.0H573.1844L569.3844 -111.15H501.1744L494.7144 -74.29H553.8044L550.0044 -52.44H490.9144L481.6044 0.0H455.7644ZM564.2658 -19.3192 577.1972000000001 -92.3894 596.6722 -109.06H652.7602L668.6518000000001 -89.89659999999999L655.5646 -16.0474L636.557 0.0H580.1574ZM626.7416000000001 -18.0728 636.0896 -26.0186 646.2166 -83.0414 639.673 -90.9872H606.176L596.8280000000001 -83.0414L586.5452 -26.0186L593.0888 -18.0728ZM765.2478 -57.9576 753.4069999999999 -47.8306 761.976 -36.1456 755.5882 0.0H734.3994L740.0082 -32.2506L733.153 -41.7544H698.5654L691.2428 0.0H670.054L689.2174 -109.06H756.2114L771.0124 -90.9872ZM701.6813999999999 -59.204H739.0734L745.4612 -64.657L749.2004 -85.8458L744.6822 -91.2988H707.2902ZM775.3747999999999 -19.3192 788.462 -92.3894 807.937 -109.06H861.8438L877.5795999999999 -90.20819999999999L874.7751999999999 -74.78399999999999H853.5863999999999L855.1443999999999 -83.6646L849.2239999999999 -90.9872H817.285L807.937 -83.0414L797.6542 -26.0186L804.1977999999999 -18.0728H836.76L845.6406 -25.551199999999998L848.6007999999999 -42.6892H825.3865999999999L828.5025999999999 -60.762H872.2823999999999L864.4924 -16.0474L845.329 0.0H791.2664ZM896.5871999999999 -109.06H975.2661999999999L972.1501999999999 -91.143H914.66L909.8301999999999 -63.566399999999994H962.8022L959.6861999999999 -45.961H906.7141999999999L901.7285999999999 -17.916999999999998H959.2187999999999L956.1027999999999 0.0H877.4237999999999Z"/></g></svg></a>
+    <nav class="nav" aria-label="Seções">
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#exclusivo">Só aqui</a>
+      <a href="#mundo">Dublagem</a>
+      <a href="#renda">Renda</a>
+      <a href="#precos">Preços</a>
+      <a href="#duvidas">Dúvidas</a>
+    </nav>
+    <a class="btn btn-live" href="#precos">Quero meu acesso</a>
+  </div>
+</header>
+
+<main id="inicio">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="kicker">Cortes virais no piloto automático</div>
+        <h1>A live ainda nem acabou e seus cortes já estão prontos.</h1>
+        <p class="lead">O ViralForge assiste lives do mundo inteiro, acha os momentos que vão viralizar, corta, edita com legenda e webcam no topo, traduz e dubla em português e entrega tudo no seu Telegram. Você só aprova, posta e fatura.</p>
+        <div class="cta-row">
+          <a class="btn btn-live" href="#precos">Quero cortar no automático</a>
+          <a class="btn btn-ghost" href="#como-funciona">Ver como funciona</a>
+        </div>
+        <div class="hero-note"><span>Não precisa saber editar</span><span>Controle tudo pelo celular</span><span>7 dias de garantia</span></div>
+      </div>
+
+      <div class="studio" aria-label="Exemplo: linha do tempo de uma live com três momentos virando cortes verticais">
+        <div class="studio-head">
+          <span class="onair"><i></i>AO VIVO</span>
+          <span class="tc">GTA RP · 03:12:48 de live</span>
+        </div>
+        <div class="timeline">
+          <svg id="tl" viewBox="0 0 600 132" role="img" aria-label="Volume do áudio e do chat ao longo da live, com três picos marcados como cortes"></svg>
+        </div>
+        <div class="tl-legend">
+          <span><b style="background:var(--muted)"></b>áudio da live</span>
+          <span><b style="background:var(--burn)"></b>chat explodindo</span>
+          <span><b style="background:var(--live)"></b>momento cortado</span>
+        </div>
+        <div class="clips">
+          <div>
+            <div class="phone"><div class="cam"></div><div class="game g1"></div><span class="seam">Perseguição insana</span><p class="burn">ELE NÃO <em>ACREDITOU</em> NISSO</p></div>
+            <div class="clip-meta"><span class="tc">00:42:17</span><span>nota 9,1</span></div>
+          </div>
+          <div>
+            <div class="phone"><div class="cam"></div><div class="game g2"></div><span class="dub">🇺🇸→🇧🇷</span><span class="seam">Plano deu errado</span><p class="burn">MANO, <em>OLHA</em> ISSO</p></div>
+            <div class="clip-meta"><span class="tc">01:58:03</span><span>dublado</span></div>
+          </div>
+          <div>
+            <div class="phone"><div class="cam"></div><div class="game g3"></div><span class="seam">O chat surtou</span><p class="burn">FOI <em>SEM</em> QUERER</p></div>
+            <div class="clip-meta"><span class="tc">02:47:39</span><span>nota 8,4</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROVA -->
+  <div class="proof">
+    <div class="wrap">
+      <div><strong class="tc">~7 min</strong><span>para transformar uma live de 5h44 em cortes prontos</span></div>
+      <div><strong class="tc">~21 s</strong><span>para traduzir e dublar um corte em português</span></div>
+      <div><strong class="tc">8 s</strong><span>para o radar achar 56 vídeos bombando no mundo hoje</span></div>
+      <div><strong>24h</strong><span>de piloto automático, com você aprovando pelo celular</span></div>
+      <p class="proof-note">Tempos medidos em testes reais no próprio ViralForge, num PC comum. Variam com a sua internet e o seu computador.</p>
+    </div>
+  </div>
+
+  <!-- DOR -->
+  <section>
+    <div class="wrap">
+      <div class="kicker">O problema</div>
+      <h2>Cortar na mão virou um segundo emprego.</h2>
+      <p class="lead" style="margin-top:20px">Quem vive de cortes sabe: o vídeo viral é a parte fácil. O difícil são as horas assistindo live, baixando arquivos gigantes e editando um por um, enquanto outra página posta antes de você.</p>
+      <div class="pain-grid">
+        <div class="pain-col old">
+          <h3>Do jeito antigo</h3>
+          <ul>
+            <li><span>Assistir horas de live caçando um momento bom</span></li>
+            <li><span>Baixar 10 GB para usar 60 segundos</span></li>
+            <li><span>Recortar a webcam, montar o vertical, escrever legenda palavra por palavra</span></li>
+            <li><span>Ficar sem ideia de manchete, legenda e hashtag</span></li>
+            <li><span>Ignorar o conteúdo gringo porque não dá para traduzir tudo</span></li>
+            <li><span>Postar tarde, quando o assunto já esfriou</span></li>
+          </ul>
+        </div>
+        <div class="pain-col new">
+          <h3>Com o ViralForge</h3>
+          <ul>
+            <li><span>A IA lê o volume do áudio, o chat e o mapa de calor do YouTube e acha os picos sozinha</span></li>
+            <li><span>Baixa só os trechos que importam, em 1080p</span></li>
+            <li><span>Edita em formato vertical com a webcam em cima, o jogo embaixo e legenda karaokê</span></li>
+            <li><span>Escreve a manchete, a legenda do post e as hashtags</span></li>
+            <li><span>Traduz e dubla em português o que vem de fora</span></li>
+            <li><span>Entrega durante a live, enquanto o assunto ainda está quente</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMO FUNCIONA -->
+  <section id="como-funciona" style="padding-top:0">
+    <div class="wrap">
+      <div class="kicker">Como funciona</div>
+      <h2>Do link ao corte postado em quatro passos.</h2>
+      <div class="steps">
+        <div class="step">
+          <h3>Mande um link ou deixe ele procurar</h3>
+          <p>Cole um link do YouTube, Twitch, Kick ou TikTok, mande um vídeo pelo Telegram, ou ligue o piloto automático para ele achar as lives em alta sozinho.</p>
+        </div>
+        <div class="step">
+          <h3>A IA escolhe os melhores momentos</h3>
+          <p>Gritos, risadas, chat explodindo com "KKKK" e "clipa isso", partes mais repetidas do vídeo. O Claude assiste o trecho e dá uma nota de 0 a 10.</p>
+        </div>
+        <div class="step">
+          <h3>Edição pronta para viralizar</h3>
+          <p>Vertical 9:16, webcam em cima e jogo embaixo, legenda que acompanha a fala, manchete forte e o corte começando e terminando na frase certa.</p>
+        </div>
+        <div class="step">
+          <h3>Chega no seu Telegram</h3>
+          <p>Você assiste, aprova com um toque e ele posta no Instagram Reels e no YouTube Shorts, ou deixa no automático com nota mínima e limite por dia.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXCLUSIVOS -->
+  <section class="only" id="exclusivo">
+    <div class="wrap">
+      <div class="kicker">Só o ViralForge faz</div>
+      <h2>Oito coisas que você não acha juntas em nenhum outro lugar.</h2>
+      <p class="lead" style="margin-top:20px">Editor automático de cortes existe aos montes. Um que assiste a live com você, fala português com conteúdo do mundo inteiro e obedece pelo celular, não.</p>
+      <div class="only-grid">
+        <article class="feat big">
+          <span class="tag">AO VIVO</span>
+          <h3>Corta durante a live, não depois</h3>
+          <p>Ele grava a live em tempo real, percebe o pico na hora e manda o corte editado minutos depois. Quando a live acaba, você já postou os melhores momentos antes de todo mundo.</p>
+          <span class="mini">pico detectado → corte pronto em minutos</span>
+        </article>
+        <article class="feat big">
+          <span class="tag">DUBLAGEM</span>
+          <h3>Conteúdo gringo chega dublado em português</h3>
+          <p>Fala em inglês, espanhol, japonês ou qualquer idioma? Ele traduz do jeito que brasileiro fala, sem censura, e dubla com voz neural natural, masculina ou feminina conforme quem fala.</p>
+          <span class="mini">legenda e voz em pt-BR, automático</span>
+        </article>
+        <article class="feat">
+          <span class="tag">RADAR</span>
+          <h3>Radar de virais do mundo</h3>
+          <p>Junta o que mais tem views hoje no YouTube, o top do dia no Reddit e os clipes do dia na Twitch, e te diz o que cortar primeiro.</p>
+        </article>
+        <article class="feat">
+          <span class="tag">TELEGRAM</span>
+          <h3>Controle total pelo celular</h3>
+          <p>Menu com botões: mandar link, aprovar cortes, assistir live, mudar ajustes e usar as ferramentas, de qualquer lugar.</p>
+        </article>
+        <article class="feat">
+          <span class="tag">FACECAM</span>
+          <h3>Acha a webcam sozinho</h3>
+          <p>Detecta o rosto do streamer na tela e monta o layout webcam em cima e jogo embaixo, sem você recortar nada.</p>
+        </article>
+        <article class="feat">
+          <span class="tag">PILOTO</span>
+          <h3>Piloto automático 24 horas</h3>
+          <p>Procura lives em alta, assiste, corta, julga e posta respeitando limite diário e intervalo entre posts.</p>
+        </article>
+        <article class="feat">
+          <span class="tag">PERMISSÃO</span>
+          <h3>Pede permissão por você</h3>
+          <p>Achou streamer novo em alta? Ele pesquisa se o canal libera cortes e te dá a mensagem pronta para pedir.</p>
+        </article>
+        <article class="feat">
+          <span class="tag">CLAUDE</span>
+          <h3>Julgamento com IA de verdade</h3>
+          <p>Cada corte passa pelo Claude, que avalia se vai prender e explica o motivo da nota antes de te mandar.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- MUNDO -->
+  <section id="mundo">
+    <div class="wrap world-grid">
+      <div>
+        <div class="kicker">O mundo é o seu nicho</div>
+        <h2>Poste primeiro o que ainda não chegou no Brasil.</h2>
+        <p class="lead" style="margin-top:20px">Os momentos mais virais nascem em lives dos EUA, da Espanha, do Japão e da Coreia. Quase ninguém corta porque dá trabalho traduzir. Com o ViralForge, esse conteúdo vira um corte em português, com legenda e voz, antes de virar notícia aqui.</p>
+        <ul class="checks">
+          <li><span>Detecta o idioma sozinho e traduz para o português falado, com gíria e no tempo da fala</span></li>
+          <li><span>Voz brasileira natural, com entonação, que acompanha o ritmo do original</span></li>
+          <li><span>O áudio original abaixa só enquanto a dublagem fala e volta nas pausas</span></li>
+          <li><span>Notícias, tendências e pautas pesquisadas no mundo inteiro, entregues em português</span></li>
+        </ul>
+      </div>
+      <div class="dubcard" aria-label="Exemplo de tradução e dublagem">
+        <div class="lang-row"><span class="lang">EN</span><p class="orig">"No way, bro, he did NOT just jump off the bridge with the cops right behind him…"</p></div>
+        <div class="lang-row"><span class="lang pt">PT</span><p><strong>"Não, mano, ele NÃO pulou da ponte com a polícia colada atrás dele…"</strong></p></div>
+        <div class="wave" id="wave" aria-hidden="true"></div>
+        <div class="dub-meta">
+          <span class="chip">voz masculina automática</span>
+          <span class="chip">legenda em português</span>
+          <span class="chip">sem censura</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TELEGRAM -->
+  <section style="padding-top:0">
+    <div class="wrap tg-grid">
+      <div>
+        <div class="kicker">Seu estúdio no bolso</div>
+        <h2>Tudo pelo Telegram, com botões.</h2>
+        <p class="lead" style="margin-top:20px">O ViralForge roda no seu PC e você comanda pelo celular. Sem decorar comando, sem abrir o computador.</p>
+        <ul class="tg-list">
+          <li><span class="ic" aria-hidden="true">🔗</span><div><strong>Cole um link, receba os cortes</strong><p>Barra de progresso ao vivo e os vídeos prontos chegando no chat.</p></div></li>
+          <li><span class="ic" aria-hidden="true">✅</span><div><strong>Aprove com um toque</strong><p>Postar, postar agora, trocar a manchete ou descartar, direto no vídeo.</p></div></li>
+          <li><span class="ic" aria-hidden="true">🔴</span><div><strong>Mande assistir uma live</strong><p>Ele assiste em tempo real e te avisa a cada corte entregue.</p></div></li>
+          <li><span class="ic" aria-hidden="true">🛠️</span><div><strong>11 ferramentas de conteúdo</strong><p>Notícias, virais do mundo, roteiro, hashtags, pauta da semana e mais, respondidas ali mesmo.</p></div></li>
+        </ul>
+      </div>
+      <div class="tg" aria-label="Exemplo do menu do bot no Telegram">
+        <div class="tg-bar"><span class="av"><svg class="" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="-340 -240 680 480"><path fill="#FF2E63" d="M-269,-186 L-60,-186 L-60,-114 L-234,-114 L-234,114 L-119,114 L-187,186 L-269,186 L-317,138 L-317,-138 Z M269,186 L60,186 L60,114 L234,114 L234,-114 L119,-114 L187,-186 L269,-186 L317,-138 L317,138 Z M192,-213 L52,-64 L20,-81 Z M-192,213 L-52,64 L-20,81 Z"/><path fill="#EDF0F4" d="M-97.0,-72.7 Q-97,-95 -76.9,-85.3 L81.9,-8.6 Q108,4 81.9,16.6 L-76.9,93.3 Q-97,103 -97.0,80.7 Z"/></svg></span><div>ViralForge<small>bot</small></div></div>
+        <div class="bubble">
+          <b>🤖 ViralForge — controle remoto</b><br>
+          ▶️ Rodando · piloto manual · 🌎 mundo<br>
+          ⏳ 3 cortes esperando você · 🔴 1 live sendo assistida<br>
+          🧠 Claude conectado ✅
+        </div>
+        <div class="ikb">
+          <span>🎬 Cortar vídeo</span><span>🔴 Ao vivo</span>
+          <span>📋 Fila de cortes</span><span>🌎 Mundo e dublagem</span>
+          <span>🛠️ Ferramentas</span><span>⚙️ Piloto automático</span>
+          <span>🧠 Claude</span><span>📊 Status</span>
+        </div>
+        <div class="bubble" style="margin-top:12px">🔥 Corte #14 pronto, nota 9,1/10<br>🌎 Traduzido do inglês e dublado<br>📝 ELE PULOU DA PONTE COM A POLÍCIA ATRÁS</div>
+        <div class="ikb">
+          <span>✅ Postar</span><span>⚡ Postar agora</span>
+          <span>✏️ Mudar manchete</span><span>❌ Descartar</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TUDO INCLUSO -->
+  <section style="padding-top:0">
+    <div class="wrap">
+      <div class="kicker">Tudo incluso</div>
+      <h2>Uma ferramenta no lugar de cinco.</h2>
+      <div class="all-grid">
+        <div class="all-item"><strong>Legenda karaokê</strong><span>Palavra por palavra, destacando quem fala.</span></div>
+        <div class="all-item"><strong>Manchete automática</strong><span>Título forte no meio da tela, que prende nos 3 primeiros segundos.</span></div>
+        <div class="all-item"><strong>Legenda do post pronta</strong><span>Gancho, contexto, pergunta para comentar, crédito e hashtags.</span></div>
+        <div class="all-item"><strong>Postagem e agenda</strong><span>Instagram Reels e YouTube Shorts, na hora ou agendado.</span></div>
+        <div class="all-item"><strong>Multiplicar</strong><span>Um vídeo vira vários cortes de uma vez.</span></div>
+        <div class="all-item"><strong>Métricas</strong><span>Veja o que deu views e ajuste o que corta.</span></div>
+        <div class="all-item"><strong>Painel no PC</strong><span>Fila, prévia vertical, agenda e contas num só lugar.</span></div>
+        <div class="all-item"><strong>Painel fora de casa</strong><span>Abra o painel do seu PC de qualquer lugar, com senha.</span></div>
+        <div class="all-item"><strong>Vários sites de vídeo</strong><span>YouTube, Twitch, Kick, TikTok, Drive e vídeos do seu PC.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RENDA -->
+  <section class="money" id="renda">
+    <div class="wrap">
+      <div class="kicker">Onde está o dinheiro</div>
+      <h2>Cortes viraram profissão. O trabalho braçal, não precisa ser seu.</h2>
+      <p class="lead" style="margin-top:20px">Quem posta mais cortes bons, mais rápido, cresce mais rápido. O ViralForge te dá volume e velocidade para disputar os caminhos que já pagam criadores de cortes hoje.</p>
+      <div class="money-grid">
+        <div class="way">
+          <span class="tc">MONETIZAÇÃO</span>
+          <h3>Páginas de cortes monetizadas</h3>
+          <p>Shorts, Reels e TikTok pagam por desempenho quando a conta atinge os requisitos de cada plataforma. Mais cortes por dia, mais chances de estourar.</p>
+        </div>
+        <div class="way">
+          <span class="tc">CLIPAGEM</span>
+          <h3>Programas de clipagem</h3>
+          <p>Streamers e marcas pagam por cortes que dão views. Com o ViralForge você atende vários canais ao mesmo tempo sem virar a noite editando.</p>
+        </div>
+        <div class="way">
+          <span class="tc">SERVIÇO</span>
+          <h3>Venda cortes como serviço</h3>
+          <p>Ofereça cortes prontos para streamers que não têm tempo de editar. Você entrega em horas o que levaria dias na mão.</p>
+        </div>
+      </div>
+      <p class="disclaimer">Resultados dependem do nicho, da constância, da qualidade do conteúdo e das regras de cada plataforma. O ViralForge não garante ganhos: ele tira de você as horas de trabalho repetitivo para você focar no que faz uma página crescer.</p>
+    </div>
+  </section>
+
+  <!-- COMPARAÇÃO -->
+  <section>
+    <div class="wrap">
+      <div class="kicker">Lado a lado</div>
+      <h2>Compare antes de escolher.</h2>
+      <div class="table-box">
+        <table>
+          <thead><tr><th scope="col"></th><th scope="col">Editar na mão</th><th scope="col">Editores de corte comuns</th><th scope="col" class="us">ViralForge</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Corta durante a live</th><td class="no">Não</td><td class="no">Geralmente não</td><td class="us">Sim, em tempo real</td></tr>
+            <tr><th scope="row">Usa o chat da live para achar o momento</th><td class="no">Você lê o chat</td><td class="no">Raro</td><td class="us">Sim</td></tr>
+            <tr><th scope="row">Traduz e dubla em português</th><td class="no">Não</td><td class="no">Legenda, quando tem</td><td class="us">Legenda e voz</td></tr>
+            <tr><th scope="row">Webcam em cima, jogo embaixo</th><td class="no">Manual</td><td>Às vezes</td><td class="us">Automático</td></tr>
+            <tr><th scope="row">Radar de virais do mundo</th><td class="no">Não</td><td class="no">Não</td><td class="us">Sim</td></tr>
+            <tr><th scope="row">Controle por Telegram com botões</th><td class="no">Não</td><td class="no">Não</td><td class="us">Sim</td></tr>
+            <tr><th scope="row">Piloto automático com aprovação</th><td class="no">Não</td><td class="no">Raro</td><td class="us">Sim</td></tr>
+            <tr><th scope="row">Seus vídeos ficam no seu PC</th><td>Sim</td><td class="no">Geralmente na nuvem</td><td class="us">Sim</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ÉTICA -->
+  <section style="padding-top:0">
+    <div class="wrap ethic">
+      <div>
+        <div class="kicker">Crescer do jeito certo</div>
+        <h2>Cortes com permissão duram mais.</h2>
+        <p class="lead" style="margin-top:20px">Página que leva strike some. Por isso o piloto automático só corta streamers que você liberou. Quando aparece alguém novo em alta, ele pesquisa se o canal permite cortes e te entrega a mensagem pronta para pedir autorização, com crédito ao criador em todo post.</p>
+      </div>
+      <div class="permit" aria-label="Exemplo de pedido de permissão no Telegram">
+        <div class="who">👤 Streamer novo em alta <span>Twitch · 18,4 mil assistindo</span></div>
+        <div class="verdict">Pesquisa do Claude: o canal parece liberar cortes ✅ (a bio fala em "cortes liberados com crédito")</div>
+        <div class="row"><span class="pill ok">✅ Liberar</span><span class="pill">❌ Bloquear</span><span class="pill">📩 Mensagem para pedir permissão</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PREÇOS -->
+  <section class="money" id="precos">
+    <div class="wrap">
+      <div class="kicker">Acesso</div>
+      <h2>Comece hoje. Seu primeiro corte sai em minutos.</h2>
+      <div class="plans">
+        <div class="plan">
+          <div class="name">Mensal</div>
+          <div class="price"><strong class="tc" data-price="mensal">R$ 97</strong><span>/mês</span></div>
+          <p class="sub">Para testar no seu ritmo e cancelar quando quiser.</p>
+          <ul>
+            <li><span>Todas as funções, sem limite de cortes</span></li>
+            <li><span>Modo ao vivo, tradução e dublagem</span></li>
+            <li><span>Bot do Telegram e piloto automático</span></li>
+            <li><span>Atualizações enquanto a assinatura estiver ativa</span></li>
+          </ul>
+          <a class="btn btn-ghost buy" data-plan="mensal" href="#precos">Assinar o mensal</a>
+          <p class="buy-msg" aria-live="polite"></p>
+        </div>
+        <div class="plan hot">
+          <span class="badge">MELHOR CUSTO</span>
+          <div class="name">Anual</div>
+          <div class="price"><strong class="tc" data-price="anual">R$ 697</strong><span>/ano</span></div>
+          <p class="sub" data-price-note>Sai por menos de R$ 60 por mês, 5 meses de graça.</p>
+          <ul>
+            <li><span>Tudo do plano mensal</span></li>
+            <li><span>Preço travado por 12 meses</span></li>
+            <li><span>Prioridade nas novidades</span></li>
+            <li><span>Guia de configuração passo a passo</span></li>
+          </ul>
+          <a class="btn btn-live buy" data-plan="anual" href="#precos">Quero o anual</a>
+          <p class="buy-msg" aria-live="polite"></p>
+        </div>
+      </div>
+      <div class="guarantee">
+        <span class="seal tc">7d</span>
+        <p><strong>Garantia de 7 dias.</strong> Instale, mande seus links, receba seus cortes. Se não for para você, peça o reembolso em até 7 dias e devolvemos 100% do valor.</p>
+      </div>
+      <div class="req" aria-label="O que você precisa">
+        <span class="chip">💻 PC com Windows 10 ou 11</span>
+        <span class="chip">🧠 Conta Claude própria (assinatura à parte)</span>
+        <span class="chip">📱 Telegram no celular</span>
+        <span class="chip">🌐 Internet</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="duvidas">
+    <div class="wrap">
+      <div class="kicker">Dúvidas</div>
+      <h2>Perguntas frequentes.</h2>
+      <div class="faq">
+        <details><summary>Preciso saber editar vídeo?</summary><p>Não. Você manda o link ou deixa o piloto automático procurar; o ViralForge escolhe os momentos, corta, monta o vertical, coloca legenda e manchete. Você só assiste e aprova.</p></details>
+        <details><summary>Funciona no Mac ou só no celular?</summary><p>O programa roda num PC com Windows 10 ou 11, que faz o trabalho pesado. O celular é o controle remoto: pelo Telegram você manda links, aprova cortes e acompanha tudo de qualquer lugar.</p></details>
+        <details><summary>Preciso pagar o Claude à parte?</summary><p>Sim. O ViralForge usa a sua própria conta Claude para julgar os momentos, editar, traduzir e responder as ferramentas. Você conecta a conta pelo próprio Telegram, sem mexer em código. Sem o Claude ele ainda corta e edita, mas sem a nota e a escolha inteligente.</p></details>
+        <details><summary>A dublagem usa a voz do streamer?</summary><p>Não. É uma voz neural brasileira natural, masculina ou feminina conforme quem fala, que acompanha o ritmo da fala original. O áudio original continua ao fundo e abaixa só quando a dublagem fala.</p></details>
+        <details><summary>Ele posta sozinho?</summary><p>Você escolhe. No modo manual, cada corte chega no Telegram para você aprovar. No automático, ele posta no Instagram Reels e no YouTube Shorts o que tiver nota acima da mínima, respeitando o limite de posts por dia e o intervalo que você definir.</p></details>
+        <details><summary>Posso cortar a live de qualquer pessoa?</summary><p>Corte só o que você tem permissão para usar. Muitos streamers liberam e até incentivam cortes com crédito. O piloto automático só corta canais que você liberou e te ajuda a pedir permissão aos novos.</p></details>
+        <details><summary>Quanto eu vou ganhar?</summary><p>Não prometemos valores. A renda depende do seu nicho, da constância e das regras de monetização de cada plataforma. O que o ViralForge muda é quanto você consegue produzir: mais cortes, mais rápido, com menos horas de trabalho.</p></details>
+        <details><summary>E se eu não gostar?</summary><p>Você tem 7 dias de garantia. Se não for para você, é só pedir o reembolso dentro desse prazo.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL -->
+  <section class="final">
+    <div class="wrap">
+      <h2>A próxima live viral já começou. Quem vai cortar primeiro?</h2>
+      <p>Enquanto você lê isso, alguém está ao vivo fazendo o momento do dia. Com o ViralForge, esse corte chega pronto no seu celular antes da live acabar.</p>
+      <a class="btn" href="#precos">Quero meu acesso agora</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span><svg class="foot-logo" role="img" aria-label="ViralForge" xmlns="http://www.w3.org/2000/svg" viewBox="0 -130 1362.85 260"><g transform="translate(170.0,0) scale(0.5)"><path fill="#FF2E63" d="M-269,-186 L-60,-186 L-60,-114 L-234,-114 L-234,114 L-119,114 L-187,186 L-269,186 L-317,138 L-317,-138 Z M269,186 L60,186 L60,114 L234,114 L234,-114 L119,-114 L187,-186 L269,-186 L317,-138 L317,138 Z M192,-213 L52,-64 L20,-81 Z M-192,213 L-52,64 L-20,81 Z"/><path fill="#EDF0F4" d="M-97.0,-72.7 Q-97,-95 -76.9,-85.3 L81.9,-8.6 Q108,4 81.9,16.6 L-76.9,93.3 Q-97,103 -97.0,80.7 Z"/></g><rect x="361.5" y="-70" width="3" height="140" fill="#EDF0F4" opacity=".25"/><g transform="translate(386.0,66.5)"><path fill="#EDF0F4" stroke="#EDF0F4" stroke-width="5.7" stroke-linejoin="miter" d="M17.1 -133.0H42.56L57.57 -30.78H57.95L109.06 -133.0H136.8L66.12 0.0H41.04ZM144.97 -109.06H166.15879999999999L146.8396 0.0H125.65079999999999ZM261.6642 -57.9576 249.8234 -47.8306 258.3924 -36.1456 252.00459999999998 0.0H230.8158L236.4246 -32.2506L229.5694 -41.7544H194.9818L187.6592 0.0H166.4704L185.6338 -109.06H252.62779999999998L267.4288 -90.9872ZM198.0978 -59.204H235.4898L241.8776 -64.657L245.6168 -85.8458L241.09859999999998 -91.2988H203.7066ZM319.6218 -109.06H338.94100000000003L359.66240000000005 0.0H338.16200000000003L333.79960000000005 -24.148999999999997H295.4728L282.074 0.0H260.57360000000006ZM331.7742 -41.5986 324.76320000000004 -83.0414H324.45160000000004L302.95120000000003 -41.5986ZM388.3296 -109.06H409.51840000000004L393.471 -17.916999999999998H447.84520000000003L444.7292 0.0H369.1662Z"/><path fill="#FF2E63" stroke="#FF2E63" stroke-width="5.7" stroke-linejoin="miter" d="M479.1344 -133.0H573.1844L569.3844 -111.15H501.1744L494.7144 -74.29H553.8044L550.0044 -52.44H490.9144L481.6044 0.0H455.7644ZM564.2658 -19.3192 577.1972000000001 -92.3894 596.6722 -109.06H652.7602L668.6518000000001 -89.89659999999999L655.5646 -16.0474L636.557 0.0H580.1574ZM626.7416000000001 -18.0728 636.0896 -26.0186 646.2166 -83.0414 639.673 -90.9872H606.176L596.8280000000001 -83.0414L586.5452 -26.0186L593.0888 -18.0728ZM765.2478 -57.9576 753.4069999999999 -47.8306 761.976 -36.1456 755.5882 0.0H734.3994L740.0082 -32.2506L733.153 -41.7544H698.5654L691.2428 0.0H670.054L689.2174 -109.06H756.2114L771.0124 -90.9872ZM701.6813999999999 -59.204H739.0734L745.4612 -64.657L749.2004 -85.8458L744.6822 -91.2988H707.2902ZM775.3747999999999 -19.3192 788.462 -92.3894 807.937 -109.06H861.8438L877.5795999999999 -90.20819999999999L874.7751999999999 -74.78399999999999H853.5863999999999L855.1443999999999 -83.6646L849.2239999999999 -90.9872H817.285L807.937 -83.0414L797.6542 -26.0186L804.1977999999999 -18.0728H836.76L845.6406 -25.551199999999998L848.6007999999999 -42.6892H825.3865999999999L828.5025999999999 -60.762H872.2823999999999L864.4924 -16.0474L845.329 0.0H791.2664ZM896.5871999999999 -109.06H975.2661999999999L972.1501999999999 -91.143H914.66L909.8301999999999 -63.566399999999994H962.8022L959.6861999999999 -45.961H906.7141999999999L901.7285999999999 -17.916999999999998H959.2187999999999L956.1027999999999 0.0H877.4237999999999Z"/></g></svg>© 2026 ViralForge</span>
+    <span>Cortes virais com IA · feito para criadores brasileiros · <a href="privacidade.html" style="color:inherit">Política de Privacidade</a> · <a href="termos.html" style="color:inherit">Termos de Uso</a></span>
+  </div>
+</footer>
+
+<div class="mobile-cta"><a class="btn btn-live" href="#precos">Quero meu acesso</a></div>
+
+<script>
+/* ====== CONFIGURE AQUI: preços e links de pagamento (Hotmart, Kiwify, Eduzz, Stripe...) ====== */
+const CONFIG = {
+  mensal: { preco: "R$ 97", checkout: "" },
+  anual:  { preco: "R$ 697", checkout: "", nota: "Sai por menos de R$ 60 por mês, 5 meses de graça." },
+  contato: ""  // ex.: "WhatsApp (11) 99999-9999" — aparece se o checkout ainda não estiver pronto
+};
+
+document.querySelectorAll("[data-price]").forEach(el => { el.textContent = CONFIG[el.dataset.price].preco; });
+const note = document.querySelector("[data-price-note]");
+if (note && CONFIG.anual.nota) note.textContent = CONFIG.anual.nota;
+
+document.querySelectorAll(".buy").forEach(a => {
+  const plan = CONFIG[a.dataset.plan];
+  if (plan.checkout) { a.href = plan.checkout; a.target = "_blank"; a.rel = "noopener"; return; }
+  a.addEventListener("click", e => {
+    e.preventDefault();
+    a.parentElement.querySelector(".buy-msg").textContent = CONFIG.contato
+      ? "Vendas abrindo em breve. Garanta sua vaga: " + CONFIG.contato
+      : "Vendas abrindo em breve. Volte nesta página para garantir o seu acesso.";
+  });
+});
+
+/* linha do tempo da live: áudio, chat e os três picos que viraram corte */
+(function () {
+  const svg = document.getElementById("tl");
+  const NS = "http://www.w3.org/2000/svg";
+  const W = 600, H = 132, N = 100, base = 96;
+  const peaks = [{ at: 22, label: "00:42:17" }, { at: 61, label: "01:58:03" }, { at: 87, label: "02:47:39" }];
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const el = (tag, attrs) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); svg.appendChild(n); return n; };
+  const bw = W / N;
+  peaks.forEach(p => {
+    el("rect", { x: (p.at - 3) * bw, y: 14, width: bw * 7, height: base - 10, rx: 4, fill: "var(--live)", "fill-opacity": "0.14", stroke: "var(--live)", "stroke-width": "1.5" });
+    const t = el("text", { x: (p.at + 0.5) * bw, y: 10, "text-anchor": "middle", "font-family": "JetBrains Mono, monospace", "font-size": "10", "font-weight": "700", fill: "var(--live)" });
+    t.textContent = p.label;
+  });
+  for (let i = 0; i < N; i++) {
+    let h = 10 + rnd() * 22;
+    peaks.forEach(p => { const d = Math.abs(i - p.at); if (d < 4) h += (4 - d) * 15; });
+    const hot = peaks.some(p => Math.abs(i - p.at) < 4);
+    el("rect", { x: i * bw + 1, y: base - h, width: bw - 2, height: h, rx: 1.5, fill: hot ? "var(--live)" : "var(--muted)", "fill-opacity": hot ? "1" : "0.45" });
+  }
+  for (let i = 0; i < N; i += 2) {
+    let c = rnd() * 4;
+    peaks.forEach(p => { const d = Math.abs(i - p.at); if (d < 5) c += (5 - d) * 2.4; });
+    el("rect", { x: i * bw, y: base + 10, width: bw * 2 - 2, height: Math.max(2, c * 2), rx: 1, fill: "var(--burn)" });
+  }
+  el("line", { x1: W - 2, x2: W - 2, y1: 4, y2: H - 2, stroke: "var(--live)", "stroke-width": "2" });
+  const t = el("text", { x: 4, y: H - 4, "font-family": "IBM Plex Sans, sans-serif", "font-size": "10", fill: "var(--muted)" });
+  t.textContent = "início da live";
+})();
+
+/* onda da voz dublada */
+(function () {
+  const w = document.getElementById("wave");
+  let s = 3;
+  for (let i = 0; i < 48; i++) {
+    s = (s * 9301 + 49297) % 233280;
+    const b = document.createElement("i");
+    b.style.height = (20 + (s / 233280) * 80 * Math.abs(Math.sin(i / 5))) + "%";
+    w.appendChild(b);
+  }
+})();
+</script>
+</body>
+</html>
